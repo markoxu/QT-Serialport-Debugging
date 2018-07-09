@@ -1,0 +1,135 @@
+<!DOCTYPE html>  
+<html>  
+<head>  
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />  
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />  
+<title>Track</title>  
+<style type="text/css">  
+    html{height:100%}  
+    body{height:100%;margin:0px;padding:0px}
+	#container{height:90%;width:100%;}	
+    #controller{height:35px; width:100%; background-color:lightblue;}    
+</style>    
+<script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=IDvNBsejl9oqMbPF316iKsXR"></script> 
+<script type="text/javascript">  
+var map; //百度地图对象
+var car; //汽车图标
+var label; //信息标签
+var centerPoint; //中心坐标
+var index = 0; //记录移动到的位置
+var points; //主要关键点
+var stepPoints = []; //细化关键点
+
+function initMap() {   
+    //初始化地图,选取第一个点为起始点  
+    map = new BMap.Map("container");  
+    map.centerAndZoom(new BMap.Point(121.501376,31.191587), 16);  
+    map.enableScrollWheelZoom();  
+    map.addControl(new BMap.NavigationControl());
+	//添加标识
+	var  copyrightControl= new BMap.CopyrightControl({
+		anchor: BMAP_ANCHOR_BOTTOM_RIGHT, 
+		offset: new BMap.Size(10, 10)
+	});
+	map.addControl(copyrightControl);
+	copyrightControl.addCopyright({id: 1,content: "<a style='font-size:30px;background:white'>MarkoXu</a>",});
+	//点击拾取坐标
+	map.addEventListener("click", function(e){
+		var infowindowOptions = {width:80, height:30, title:"地理坐标:", };
+		var infoWindow = new BMap.InfoWindow(e.point.lng + "," + e.point.lat, infowindowOptions); 
+		map.openInfoWindow(infoWindow, e.point);
+	});	
+    //搜索产生一条路线
+	var drivngOpts = {	renderOptions:{
+										map:map,
+										enableDragging: true,
+										selectFirstResult:true,
+										autoViewport:false
+									},
+						policy:BMAP_DRIVING_POLICY_LEAST_TIME,
+						onPolylinesSet: function(routes){
+														for(var i=0;i<routes.length;i++){
+															var polyLine = routes[i].getPolyline();
+															polyLine.setStrokeColor("blue");
+															polyLine.setStrokeStyle("dashed");
+														}
+												}
+					};
+    var driving = new BMap.DrivingRoute(map, drivngOpts);
+	//设置起始点和终点，允许拖拽
+	var startPoint = new BMap.Point(121.501376,31.191587);
+	var endPoint = new BMap.Point(121.521426,31.187656);
+    driving.search(startPoint, endPoint);
+	//搜索的回调函数
+    driving.setSearchCompleteCallback(function(){
+		//清空重新显示
+		map.clearOverlays();
+		//拼接所有的路径
+		points = [];
+		var routePlan = driving.getResults().getPlan(0)
+		for(var i = 0;i < routePlan.getNumRoutes();i++){
+			points.push.apply(points,routePlan.getRoute(i).getPath());
+		}
+        centerPoint = new BMap.Point((points[0].lng + points[points.length - 1].lng) / 2, (points[0].lat + points[points.length - 1].lat) / 2);  
+        map.panTo(centerPoint);  
+        //设置小车的label		
+        label = new BMap.Label("", {offset: new BMap.Size(-50, -50)});  
+        car = new BMap.Marker(points[0]);  
+        car.setLabel(label);  
+        map.addOverlay(car);
+		//去除转弯相同的关键点
+		for(var i = 0; i < points.length - 1; i++){
+			if(points[i].lng == points[i+1].lng && points[i].lat == points[i+1].lat){
+				points.splice(i, 1);
+			}
+		}
+		//显示关键点坐标，不内插路径点
+		var stepgOpts = {
+			size: BMAP_POINT_SIZE_BIG,
+			shape: BMAP_POINT_SHAPE_CIRCLE,
+			color: 'blue'
+		}
+		var stepCollection = new BMap.PointCollection(points, stepgOpts);
+		map.addOverlay(stepCollection);
+		//将index更新为0
+		index = 0;	
+    });  
+}  
+
+
+function play(){
+    var point = points[index];
+    label.setContent("MarkoXu<br>" + "经度: " + point.lng.toFixed(5) + "<br>纬度: " + point.lat.toFixed(5));  
+    car.setPosition(point);
+    map.panTo(point);
+	if(index == 0){
+		map.addOverlay(new BMap.Polyline([points[0], point], {strokeColor: "red", strokeWeight: 3, strokeOpacity: 1}));
+	}
+    else{  
+        map.addOverlay(new BMap.Polyline([points[index - 1], point], {strokeColor: "red", strokeWeight: 3, strokeOpacity: 1}));  
+    }
+    index++;  
+    if(index == points.length){   
+        map.panTo(point);
+		index = 0;		
+    }
+}  
+
+
+function reset(){    
+    index = 0;  
+    car.setPosition(points[0]);  
+    map.panTo(centerPoint);  
+}
+
+</script>  
+</head>    
+
+<body onload="initMap();">
+	<div id="container"></div>    
+    <div id="controller" align="center">
+        <input id="play" type="button" value="下一步" onclick="play();" />  
+        <input id="reset" type="button" value="返回起点" onclick="reset()" />  
+    </div>    
+</body>    
+</html>  
