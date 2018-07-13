@@ -7,4 +7,6 @@
 需要在walkroute.html中使用自己的百度地图api密钥<br>
 在widget.cpp将html改为绝对路径，否则可能无法正常显示百度地图<br>
 地图中的起点与终点可以拖拽，并会自动检索出合适的导航路径与路径关键点<br>
-qq:704712641
+qq:704712641<br>
+3. 界面截图<br>
+![image](https://github.com/MarkoXyz/QT_Serialport_Debugging/blob/master/image.png)
